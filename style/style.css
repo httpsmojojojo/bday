@@ -128,23 +128,7 @@ body {
   position: relative;
 }
 
-.six img {
-  display: inline-block;
-  max-width: 100%;
-  height: auto;
-}
-
-.six .lydia-dp {
-  width: min(320px, 80vw);
-}
-
-.six .hat {
-  position: absolute;
-  width: 80px;
-  top: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-}
+/* Photo/hat removed from HTML; keep section spacing clean */
 
 .baloons img {
   display: inline-block;
@@ -273,8 +257,8 @@ body {
   }
 
   .six .hat {
-    width: 50px;
-    top: -18px;
+    width: var(--hat-size-mobile);
+    top: var(--hat-y-mobile);
   }
 
   .wish-hbd {

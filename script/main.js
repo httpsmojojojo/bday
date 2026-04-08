@@ -6,12 +6,11 @@ const fetchData = () => {
       dataArr = Object.keys(data);
       dataArr.map(customData => {
         if (data[customData] !== "") {
+          const node = document.querySelector(`[data-node-name*="${customData}"]`);
           if (customData === "imagePath") {
-            document
-              .querySelector(`[data-node-name*="${customData}"]`)
-              .setAttribute("src", data[customData]);
+            if (node) node.setAttribute("src", data[customData]);
           } else {
-            document.querySelector(`[data-node-name*="${customData}"]`).innerText = data[customData];
+            if (node) node.innerText = data[customData];
           }
         }
 
@@ -29,24 +28,100 @@ const setupBackgroundMusic = () => {
   if (!bgMusic) return;
 
   bgMusic.volume = 1;
+  let unlocked = false;
 
-  const startMusic = () => {
-    bgMusic.play().catch(() => {
-      // Browser may still block playback until another gesture.
-    });
+  const overlay = document.createElement("div");
+  overlay.id = "audio-unlock";
+  overlay.setAttribute("role", "button");
+  overlay.setAttribute("tabindex", "0");
+  overlay.innerHTML = `
+    <div class="audio-unlock__card">
+      <div class="audio-unlock__title">Tap to enable sound</div>
+      <div class="audio-unlock__sub">Mobile browsers block autoplay with audio.</div>
+      <div class="audio-unlock__cta">Tap anywhere</div>
+    </div>
+  `;
+
+  const injectOverlayStyles = () => {
+    if (document.getElementById("audio-unlock-style")) return;
+    const style = document.createElement("style");
+    style.id = "audio-unlock-style";
+    style.textContent = `
+      #audio-unlock{
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(0,0,0,.72);
+        color: #fff;
+        text-align: center;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #audio-unlock.is-visible{ display: flex; }
+      #audio-unlock .audio-unlock__card{
+        width: min(520px, 92vw);
+        border: 1px solid rgba(255,255,255,.22);
+        border-radius: 14px;
+        padding: 18px 18px 16px;
+        background: rgba(20,20,24,.75);
+        backdrop-filter: blur(10px);
+      }
+      #audio-unlock .audio-unlock__title{ font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; }
+      #audio-unlock .audio-unlock__sub{ font-size: 1rem; opacity: .9; margin-bottom: 14px; }
+      #audio-unlock .audio-unlock__cta{
+        display: inline-block;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: rgb(21, 161, 237);
+        font-weight: 600;
+      }
+    `;
+    document.head.appendChild(style);
   };
 
-  const handleFirstInteraction = () => {
-    startMusic();
-    document.removeEventListener("click", handleFirstInteraction);
-    document.removeEventListener("touchstart", handleFirstInteraction);
-    document.removeEventListener("keydown", handleFirstInteraction);
+  const showOverlay = () => {
+    injectOverlayStyles();
+    if (!document.body.contains(overlay)) document.body.appendChild(overlay);
+    overlay.classList.add("is-visible");
   };
 
-  startMusic();
-  document.addEventListener("click", handleFirstInteraction);
-  document.addEventListener("touchstart", handleFirstInteraction);
-  document.addEventListener("keydown", handleFirstInteraction);
+  const hideOverlay = () => {
+    overlay.classList.remove("is-visible");
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+
+  const tryPlay = async () => {
+    if (unlocked) return true;
+    try {
+      await bgMusic.play();
+      unlocked = true;
+      hideOverlay();
+      document.removeEventListener("click", handleFirstInteraction);
+      document.removeEventListener("touchstart", handleFirstInteraction);
+      document.removeEventListener("keydown", handleFirstInteraction);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleFirstInteraction = async () => {
+    await tryPlay();
+  };
+
+  // Try immediately (works on many desktops / some Android setups).
+  // If blocked, fall back to an explicit user gesture prompt.
+  tryPlay().then(ok => {
+    if (!ok) showOverlay();
+  });
+
+  // Mobile unlock gestures
+  document.addEventListener("click", handleFirstInteraction, { once: false });
+  document.addEventListener("touchstart", handleFirstInteraction, { once: false, passive: true });
+  document.addEventListener("keydown", handleFirstInteraction, { once: false });
 };
 
 // Animation Timeline
